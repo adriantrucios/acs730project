@@ -1,42 +1,40 @@
-name : CD
+name: CD
 
 on:
   push:
     branches: [ prod ]
-   pull_request:
+  pull_request:
     branches: [ prod ]
-    
+  #workflow_dispatch:
+
 jobs:
 
   DeployDev:
-    name: Deploy to Dev
-    if: github.event_name = 'pull_request'
+    name: Deploy to Dev 
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    enviroment:
+    environment: 
       name: dev
-     steps:
+    steps:
       - name: Deploy
         run: echo Deploying to Dev!
-  
+    
   DeployStaging:
-    name: Deploy to Staging
-    if: github.event.ref = 'ref/heads/prod'
+    name: Deploy to Staging 
+    if: github.event.ref == 'refs/heads/prod'
     runs-on: ubuntu-latest
-    enviroment:
+    environment: 
       name: staging
-     steps:
+    steps:
       - name: Deploy
-        run: echo Deploying to Staging!
-        
-   DeployProd:
-    name: Deploy to Prod
+        run: echo Deploying to staging!
+            
+  DeployProd:
+    name: Deploy to Production 
     needs: [DeployStaging]
     runs-on: ubuntu-latest
-    enviroment:
+    environment: 
       name: prod
-     steps:
+    steps:
       - name: Deploy
-        run: echo Deploying to Prod!
-        
-     
-  
+        run: echo Deploying to prod!

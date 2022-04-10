@@ -1,4 +1,4 @@
-# acs730project
+# acs730 Final Project group 10
 Pre-requisites
 - Install Terraform and updated to latest version
 - Create the following S3 Buckets

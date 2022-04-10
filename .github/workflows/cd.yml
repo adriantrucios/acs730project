@@ -1,0 +1,42 @@
+name : CD
+
+on:
+  push:
+    branches: [ prod ]
+   pull_request:
+    branches: [ prod ]
+    
+jobs:
+
+  DeployDev:
+    name: Deploy to Dev
+    if: github.event_name = 'pull_request'
+    runs-on: ubuntu-latest
+    enviroment:
+      name: dev
+     steps:
+      - name: Deploy
+        run: echo Deploying to Dev!
+  
+  DeployStaging:
+    name: Deploy to Staging
+    if: github.event.ref = 'ref/heads/prod'
+    runs-on: ubuntu-latest
+    enviroment:
+      name: staging
+     steps:
+      - name: Deploy
+        run: echo Deploying to Staging!
+        
+   DeployProd:
+    name: Deploy to Prod
+    needs: [DeployStaging]
+    runs-on: ubuntu-latest
+    enviroment:
+      name: prod
+     steps:
+      - name: Deploy
+        run: echo Deploying to Prod!
+        
+     
+  

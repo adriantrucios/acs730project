@@ -1,12 +1,14 @@
-# Default tags
-output "default_tags" {
-  value = {
-    "Owner" = "Aparna"
-    "App"   = "Web"
-  }
+
+output "public_subnet_ids_staging" {
+  value = module.vpc-staging.public_subnet_ids
 }
 
-# Prefix to identify resources
-output "prefix" {
-  value     = "group10"
+output "private_subnet_ids_staging" {
+  value = module.vpc-staging.private_subnet_ids
 }
+
+output "vpc_id_staging" {
+  value = module.vpc-staging.vpc_id
+}
+
+

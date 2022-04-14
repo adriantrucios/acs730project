@@ -6,6 +6,6 @@ Pre-requisites
   - acs730project-dev
   - acs730project-staging
 - Upload your SSH Key
-- 
+Deploy the prod, staging and dev environment
 
 

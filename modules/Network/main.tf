@@ -1,4 +1,4 @@
-# Step 1 - Define the provider
+# Define the provider
 provider "aws" {
   region = "us-east-1"
 }
@@ -17,7 +17,7 @@ locals {
   name_prefix = "${var.prefix}-${var.env}"
 }
 
-# Create a new VPC 
+# Creating VPC 
 resource "aws_vpc" "main" {
   cidr_block       = var.vpc_cidr
   instance_tenancy = "default"
@@ -28,41 +28,40 @@ resource "aws_vpc" "main" {
   )
 }
 
-# Add provisioning of the public subnets in the custom VPC
+
+# Add provisioning of the public subnet in the default VPC
 resource "aws_subnet" "public_subnet" {
   count             = length(var.public_cidr_blocks)
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.public_cidr_blocks[count.index]
- availability_zone  = data.aws_availability_zones.available.names[count.index+1] 
+  availability_zone = data.aws_availability_zones.available.names[count.index]
   tags = merge(
     local.default_tags, {
-      Name = "${local.name_prefix}-public-subnet-${count.index+1}"
-      Tier = "Public"
+      Name = "${local.name_prefix}-Public-Subnet-${count.index}"
     }
   )
 }
 
-# Add provisioning of the private subnets in the custom VPC
+# Add provisioning of the private subnet in the default VPC
 resource "aws_subnet" "private_subnet" {
   count             = length(var.private_cidr_blocks)
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.private_cidr_blocks[count.index]
-  availability_zone = data.aws_availability_zones.available.names[count.index+1]
+  availability_zone = data.aws_availability_zones.available.names[count.index]
   tags = merge(
     local.default_tags, {
-      Name = "${local.name_prefix}-private-subnet-${count.index+1}"
-      Tier = "Private"
+      Name = "${local.name_prefix}-Private-Subnet-${count.index}"
     }
   )
 }
 
-# Create Internet Gateway
-resource "aws_internet_gateway" "igw" {
+# Creating Internet Gateway
+resource "aws_internet_gateway" "internet_gw" {
   vpc_id = aws_vpc.main.id
 
   tags = merge(local.default_tags,
     {
-      "Name" = "${local.name_prefix}-igw"
+      "Name" = "${local.name_prefix}-internet-GW"
     }
   )
 }
@@ -72,10 +71,10 @@ resource "aws_route_table" "public_route_table" {
   vpc_id = aws_vpc.main.id
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
+    gateway_id = aws_internet_gateway.internet_gw.id
   }
   tags = {
-    Name = "${local.name_prefix}-route-public-route_table"
+    Name = "${local.name_prefix}-Public-RT"
   }
 }
 
@@ -86,49 +85,44 @@ resource "aws_route_table_association" "public_route_table_association" {
   subnet_id      = aws_subnet.public_subnet[count.index].id
 }
 
-# Create NAT Gateway
-resource "aws_nat_gateway" "nat_gw" {
-  allocation_id = aws_eip.nat_eip.id
-  subnet_id = aws_subnet.public_subnet[1].id
-  
+# Create NAT GW
+resource "aws_nat_gateway" "nat-gw" {
+  allocation_id = aws_eip.nat-eip.id
+  subnet_id     = aws_subnet.public_subnet[0].id
+
   tags = {
-    Name = "${var.prefix}-nat_gw"
+    Name = "${local.name_prefix}-NAT-GW"
   }
-  
-# To ensure proper ordering, it is recommended to add an explicit dependency on the Internet Gateway for the VPC
-  depends_on = [aws_internet_gateway.igw]
+  depends_on = [aws_internet_gateway.internet_gw]
 }
 
-# Create elastic IP for NAT Gateway
-resource "aws_eip" "nat_eip" {
-  vpc = true
-  
-  tags = { 
-  Name = "${local.name_prefix}-nat_gw"
+# Create elastic IP for NAT GW
+resource "aws_eip" "nat-eip" {
+  vpc   = true
+  tags = {
+    Name = "${local.name_prefix}-NAT-GW"
   }
-
 }
 
 # Route table to route add default gateway pointing to NAT Gateway (NATGW)
-resource  "aws_route_table" "private_route_table" {
-vpc_id = aws_vpc.main.id
-tags = {
-    Name = "${local.name_prefix}-route-private-route_table",
+resource "aws_route_table" "private_route_table" {
+  vpc_id = aws_vpc.main.id
+  tags = {
+    Name = "${local.name_prefix}-Private-Route-Table",
     Tier = "Private"
   }
 }
 
 # Add route to NAT GW if we created public subnets
 resource "aws_route" "private_route" {
-  route_table_id = aws_route_table.private_route_table.id
+  route_table_id         = aws_route_table.private_route_table.id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id = aws_nat_gateway.nat_gw.id
+  gateway_id             = aws_nat_gateway.nat-gw.id
 }
 
 # Associate subnets with the custom route table
 resource "aws_route_table_association" "private_route_table_association" {
   count          = length(aws_subnet.private_subnet[*].id)
   route_table_id = aws_route_table.private_route_table.id
-  subnet_id = aws_subnet.private_subnet[count.index].id
+  subnet_id      = aws_subnet.private_subnet[count.index].id
 }
-

@@ -1,7 +1,10 @@
 # acs730 Final Project group 10
 Pre-requisites
 - Install Terraform and updated to latest version
-- Create the following S3 Bucket with name group-10-acs-project from AWS console under S3
+- Create the following S3 Bucket with below names from AWS console under S3
+- group-10-acs-project-prod
+- group-10-acs-project-Dev
+- group-10-acs-project-staging
 - Generate the SSH Key with below command "ssh-keygen -t rsa -f gopal" under below locations:-
 - testing/acs730project/workspace/prod/webserver
 - testing/acs730project/workspace/Dev/webserver

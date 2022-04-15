@@ -1,7 +1,7 @@
 # S3 Bucket Dev webserver
 terraform {
   backend "s3" {
-    bucket = "group-10-acs-project"
+    bucket = "group-10-acs-project-prod"
     key    = "prod/webserver/terraform.tfstate"
     region = "us-east-1"
   }

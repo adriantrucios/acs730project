@@ -10,42 +10,42 @@ Pre-requisites
 Deploy the prod environment 
 - Go to testing/acs730project/workspace/prod/Network
 - terraform init
--terraform validate
--terraform plan
--terraform apply
+- terraform validate
+- terraform plan
+- terraform apply
 
 - Go to testing/acs730project/workspace/prod/webserver
 - terraform init
--terraform validate
--terraform plan
--terraform apply
+- terraform validate
+- terraform plan
+- terraform apply
 
 Deploy the Dev environment 
 
 - Go to testing/acs730project/workspace/Dev/Network
 - terraform init
--terraform validate
--terraform plan
--terraform apply
+- terraform validate
+- terraform plan
+- terraform apply
 
 - Go to testing/acs730project/workspace/Dev/webserver
 - terraform init
--terraform validate
--terraform plan
--terraform apply
+- terraform validate
+- terraform plan
+- terraform apply
 
 Deploy the Staging environment
 
 - Go to testing/acs730project/workspace/staging/Network
 - terraform init
--terraform validate
--terraform plan
--terraform apply
+- terraform validate
+- terraform plan
+- terraform apply
 
 - Go to testing/acs730project/workspace/staging/webserver
 - terraform init
--terraform validate
--terraform plan
--terraform apply
+- terraform validate
+- terraform plan
+- terraform apply
 
 After deployment, we can copy the dns and paste in web browser from the AWS console under Load Balancer console and it will resolves the different IP's.

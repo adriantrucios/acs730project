@@ -109,7 +109,7 @@ resource "aws_security_group" "web_sg" {
 
 
 resource "aws_lb" "load_balancer" {
-  name               = "load-balancer-prod"
+  name               = "load-balancer-staging"
   internal           = false
   ip_address_type    = "ipv4"
   load_balancer_type = "application"

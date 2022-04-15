@@ -5,4 +5,4 @@ module "staging" {
   private_cidr_blocks = var.private_cidr_blocks
   public_cidr_blocks  = var.public_cidr_blocks
   prefix              = var.prefix
-  }
+}

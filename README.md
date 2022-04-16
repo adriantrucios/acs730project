@@ -2,7 +2,10 @@
 Pre-requisites
 - Install Terraform and updated to latest version
 - Create the following S3 Bucket with below names from AWS console under S3
-- group-10-acs-project
+- acs730project-dev
+- acs730project-prod
+- acs730project-staging
+- acs730project-public (this one in for the images)
 - Generate the SSH Key with below command "ssh-keygen -t rsa -f gopal" under below locations:-
 - testing/acs730project/workspace/prod/webserver
 - testing/acs730project/workspace/Dev/webserver

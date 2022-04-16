@@ -17,7 +17,7 @@ data "aws_ami" "latest_amazon_linux" {
 data "terraform_remote_state" "network" {
   backend = "s3"
   config = {
-    bucket = "group-10-acs-project"
+    bucket = "acs730project-dev"
     key    = "dev/network/terraform.tfstate"
     region = "us-east-1"
   }
@@ -40,36 +40,7 @@ module "globalvars" {
   source = "../../../modules/globalvars"
 }
 
-# webserver EC2 instance
-resource "aws_instance" "webserver" {
-  count                       = var.ec2_count
-  ami                         = data.aws_ami.latest_amazon_linux.id
-  instance_type               = lookup(var.instance_type, var.env)
-  key_name                    = aws_key_pair.web_key.key_name
-  subnet_id                   = data.terraform_remote_state.network.outputs.private_subnet_ids[count.index]
-  security_groups             = [aws_security_group.web_sg.id]
-  associate_public_ip_address = false
-  user_data = templatefile("${path.module}/install_httpd.sh.tpl",
-    {
-      env    = upper(var.env),
-      prefix = upper(local.prefix)
-    }
-  )
 
-  root_block_device {
-    encrypted = var.env == "prod" ? true : false
-  }
-
-  lifecycle {
-    create_before_destroy = true
-  }
-
-  tags = merge(local.default_tags,
-    {
-      "Name" = "${local.name_prefix}-webserver-${count.index + 1}"
-    }
-  )
-}
 
 
 # Adding SSH key to Amazon EC2
@@ -80,7 +51,7 @@ resource "aws_key_pair" "web_key" {
 
 
 # Security Group of webserver
-resource "aws_security_group" "web_sg" {
+resource "aws_security_group" "web_sg_dev" {
   name        = "allow_http_ssh_web"
   description = "Allow HTTP and SSH traffic"
   vpc_id      = data.terraform_remote_state.network.outputs.vpc_id
@@ -89,7 +60,7 @@ resource "aws_security_group" "web_sg" {
     from_port       = 80
     to_port         = 80
     protocol        = "tcp"
-    security_groups = [aws_security_group.lb_sg.id]
+    security_groups = [aws_security_group.lb_sg_dev.id]
   }
 
   egress {
@@ -108,12 +79,12 @@ resource "aws_security_group" "web_sg" {
 
 
 
-resource "aws_lb" "load_balancer" {
+resource "aws_lb" "load_balancer_dev" {
   name               = "load-balancer-dev"
   internal           = false
   ip_address_type    = "ipv4"
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.lb_sg.id]
+  security_groups    = [aws_security_group.lb_sg_dev.id]
   subnets            = data.terraform_remote_state.network.outputs.public_subnet_ids[*]
   tags = merge(local.default_tags,
     {
@@ -123,17 +94,17 @@ resource "aws_lb" "load_balancer" {
 }
 
 
-resource "aws_lb_listener" "lb_listen" {
-  load_balancer_arn = aws_lb.load_balancer.arn
+resource "aws_lb_listener" "lb_listen_dev" {
+  load_balancer_arn = aws_lb.load_balancer_dev.arn
   port              = "80"
   protocol          = "HTTP"
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.target_group.arn
+    target_group_arn = aws_lb_target_group.target_group_dev.arn
   }
 }
 
-resource "aws_lb_target_group" "target_group" {
+resource "aws_lb_target_group" "target_group_dev" {
   health_check {
     interval            = 15
     path                = "/"
@@ -149,7 +120,7 @@ resource "aws_lb_target_group" "target_group" {
   vpc_id      = data.terraform_remote_state.network.outputs.vpc_id
 }
 
-resource "aws_security_group" "lb_sg" {
+resource "aws_security_group" "lb_sg_dev" {
   name        = "allow_http_lb"
   description = "Allow HTTP inbound traffic"
   vpc_id      = data.terraform_remote_state.network.outputs.vpc_id
@@ -176,9 +147,105 @@ resource "aws_security_group" "lb_sg" {
   )
 }
 
-resource "aws_lb_target_group_attachment" "ec2_attach" {
-  count            = length(aws_instance.webserver)
-  target_group_arn = aws_lb_target_group.target_group.arn
-  target_id        = aws_instance.webserver[count.index].id
-  port             = 80
+
+
+resource "aws_launch_configuration" "webserver_dev" {
+  name_prefix                 = "dev-web-"
+  image_id                    = "ami-0a3c14e1ddbe7f23c"
+  instance_type               = "t3.micro"
+  key_name                    = aws_key_pair.web_key.key_name
+  security_groups             = [aws_security_group.web_sg_dev.id]
+  associate_public_ip_address = true
+  user_data = templatefile("${path.module}/install_httpd.sh.tpl",
+    {
+      env    = "dev",
+      prefix = "finalproject"
+    }
+  )
 }
+
+resource "aws_autoscaling_group" "web_dev" {
+  name                 = "aws_autoscaling_group_asg_dev"
+  min_size             = 1
+  desired_capacity     = 2
+  max_size             = 4
+  health_check_type    = "ELB"
+  target_group_arns = ["${aws_lb_target_group.target_group_dev.id}"]
+  launch_configuration = aws_launch_configuration.webserver_dev.name
+  enabled_metrics = [
+    "GroupMinSize",
+    "GroupMaxSize",
+    "GroupDesiredCapacity",
+    "GroupInServiceInstances",
+    "GroupTotalInstances"
+  ]
+  metrics_granularity = "1Minute"
+  vpc_zone_identifier = [
+    data.terraform_remote_state.network.outputs.private_subnet_ids[0],
+    data.terraform_remote_state.network.outputs.private_subnet_ids[1],
+    
+    ]
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "webserver-dev"
+    propagate_at_launch = true
+
+  }
+}
+
+
+resource "aws_autoscaling_policy" "web_policy_up_dev" {
+  name                   = "web_policy_up_dev"
+  scaling_adjustment     = 1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300
+  autoscaling_group_name = aws_autoscaling_group.web_dev.name
+}
+
+resource "aws_cloudwatch_metric_alarm" "web_cpu_alarm_up_dev" {
+  alarm_name          = "web_cpu_alarm_up_dev"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = "120"
+  statistic           = "Average"
+  threshold           = "10"
+  dimensions = {
+    AutoScalingGroupName = "${aws_autoscaling_group.web_dev.name}"
+  }
+  alarm_description = "Metric to monitor EC2 CPU usage"
+  alarm_actions     = ["${aws_autoscaling_policy.web_policy_up_dev.arn}"]
+}
+
+
+resource "aws_autoscaling_policy" "web_policy_down_dev" {
+  name                   = "web_policy_down_dev"
+  scaling_adjustment     = -1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300
+  autoscaling_group_name = aws_autoscaling_group.web_dev.name
+}
+
+
+resource "aws_cloudwatch_metric_alarm" "web_cpu_alarm_down_dev" {
+  alarm_name          = "web_cpu_alarm_down_dev"
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = "120"
+  statistic           = "Average"
+  threshold           = "5"
+  dimensions = {
+    AutoScalingGroupName = "${aws_autoscaling_group.web_dev.name}"
+  }
+  alarm_description = "Metric to monitor EC2 CPU usage"
+  alarm_actions     = ["${aws_autoscaling_policy.web_policy_up_dev.arn}"]
+}
+

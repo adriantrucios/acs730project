@@ -5,7 +5,7 @@ Pre-requisites
 - acs730project-dev
 - acs730project-prod
 - acs730project-staging
-- acs730project-public (this one in for the images)
+- acs730project-public (this one should be public, it is the repositorie for the images)
 - Generate the SSH Key with below command "ssh-keygen -t rsa -f gopal" under below locations:-
 - testing/acs730project/workspace/prod/webserver
 - testing/acs730project/workspace/Dev/webserver
